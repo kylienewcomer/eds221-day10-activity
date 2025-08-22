@@ -1,0 +1,100 @@
+---
+title: "day10-activity"
+format: html
+echo: false
+message: false
+warning: false
+---
+
+```{r, include=FALSE}
+rm(list=ls())
+
+library(tidyverse)
+library(kableExtra)
+```
+
+```{r}
+madison_meteor <- read_csv(here::here("data", "ntl20_v6.csv"), na = "-999")
+
+madison_lake <- read_csv(here::here("data", "ntl33_v7.csv"), na = "-999")
+```
+```{r}
+lake_sum <- madison_lake %>% 
+  janitor::clean_names() %>% 
+  group_by(lakeid, .add = TRUE) %>% 
+  summarise(ice_mean = mean(ice_duration, na.rm = TRUE)) %>% 
+  ungroup
+
+```
+
+```{r}
+ggplot(madison_lake, aes(lakeid, ice_duration)) +
+  geom_jitter(aes(color = lakeid), alpha = 0.7) +
+  geom_boxplot(aes(color = lakeid), alpha = 0) +
+  theme(legend.position = "none") +
+  labs(x= "Lake ID",
+       y = "Ice duration") +
+  scale_color_manual(values = c("darkgreen", "pink", "lightblue"))
+
+```
+```{r}
+# looking at annual ice duration across lakes
+ice_annual <- madison_lake %>% 
+  drop_na() %>% 
+  group_by(year4) %>% 
+  summarize(annual_mean_ice = mean(ice_duration)) %>% 
+  ungroup()
+```
+
+```{r}
+ggplot(ice_annual, aes(year4, annual_mean_ice)) +
+  geom_line() +
+  labs(x = "year",
+       y = "average ice duration") +
+  theme_classic()
+```
+This graph shows the average ice duration across the three observed lakes by year. There is a slight decrease in ice duration over time.
+
+```{r}
+air_temp <- madison_meteor %>% 
+  filter(month == 12 | month == 1 | month == 2) %>% 
+  group_by(year4) %>% 
+  summarise(mean_air_temp = mean(ave_air_temp_adjusted, na.rm = TRUE))
+```
+
+```{r}
+ggplot(air_temp, aes(year4, mean_air_temp)) +
+  geom_line() +
+  labs(x= "year", 
+       y = "average air temp") +
+  theme_classic()
+```
+```{r}
+lake_temp <- inner_join(ice_annual, air_temp)
+```
+
+```{r}
+ggplot(lake_temp, aes(mean_air_temp, annual_mean_ice)) +
+  geom_point() +
+  labs(x = "average air temperate",
+       y = "average ice duration",
+       title = "Annual mean winter air temperatures and ice duration") +
+  theme_classic()
+```
+There appears to be a slight negative relationship between average air temperature in the winter months and the average ice duration of lake, which makes sense. There are a few outliers, but overall ice duration and air temperature demostrate a negative relationship.
+
+
+```{r}
+thaw_dates <- madison_lake %>% 
+  filter(year4 >= 1970) %>% 
+  mutate(ice_off = as.Date(ice_off),
+         day = lubridate::yday(ice_off))
+```
+
+```{r}
+ggplot(thaw_dates, aes(year4, day)) +
+  geom_col() +
+  labs(x = "Year",
+       y = "Thaw day of the year")
+```
+The thaw day of the year seems to vary, with earlier and later days throughout time, but with a general downward trend to earlier days of ice thawing over time.
